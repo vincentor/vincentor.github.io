@@ -1,0 +1,1101 @@
+<!doctype html>
+<html class="theme-next use-motion theme-next-mist">
+<head>
+  
+
+<meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+
+
+
+
+
+  <link rel="stylesheet" type="text/css" href="/vendors/fancybox/source/jquery.fancybox.css?v=2.1.5"/>
+
+
+<link rel="stylesheet" type="text/css" href="/css/main.css?v=0.4.2"/>
+
+
+    <meta name="description" content="Live with hope, live with me." />
+
+
+
+  <meta name="keywords" content="linux,vsftp,ftp," />
+
+
+
+  <link rel="alternate" href="/atom.xml" title="HopeWorld" type="application/atom+xml" />
+
+
+
+  <link rel="shorticon icon" type="image/x-icon" href="/favicon.ico?v=0.4.2" />
+
+
+
+
+  <title> vsftpd简单配置 // HopeWorld </title>
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<body>
+<!--[if lte IE 8]> <div style=' clear: both; height: 59px; padding:0 0 0 15px; position: relative;margin:0 auto;'> <a href="http://windows.microsoft.com/en-US/internet-explorer/products/ie/home?ocid=ie6_countdown_bannercode" target="_blank" rel="noopener"><img src="http://7u2nvr.com1.z0.glb.clouddn.com/picouterie.jpg" border="0" height="42" width="820" alt="You are using an outdated browser. For a faster, safer browsing experience, upgrade for free today or use other browser ,like chrome firefox safari." style='margin-left:auto;margin-right:auto;display: block;'/></a></div> <![endif]-->
+  <div class="container one-column page-post-detail">
+    <div class="headband"></div>
+
+    <div id="header" class="header">
+      <div class="header-inner">
+        <h1 class="site-meta">
+  <span class="logo-line-before"><i></i></span>
+  <a href="/" class="brand">
+      <span class="logo">
+        <i class="icon-logo"></i>
+      </span>
+      <span class="site-title">HopeWorld</span>
+  </a>
+  <span class="logo-line-after"><i></i></span>
+</h1>
+
+
+  <ul id="menu" class="menu">
+     
+    
+      
+      <li class="menu-item menu-item-home">
+        <a href="/">
+          <i class="menu-item-icon icon-home"></i> <br />
+          首页
+        </a>
+      </li>
+    
+      
+      <li class="menu-item menu-item-archives">
+        <a href="/archives/">
+          <i class="menu-item-icon icon-archives"></i> <br />
+          归档
+        </a>
+      </li>
+    
+      
+      <li class="menu-item menu-item-categories">
+        <a href="/categories/">
+          <i class="menu-item-icon icon-categories"></i> <br />
+          分类
+        </a>
+      </li>
+    
+      
+      <li class="menu-item menu-item-tags">
+        <a href="/tags/">
+          <i class="menu-item-icon icon-tags"></i> <br />
+          标签
+        </a>
+      </li>
+    
+      
+      <li class="menu-item menu-item-about">
+        <a href="/about/">
+          <i class="menu-item-icon icon-about"></i> <br />
+          关于
+        </a>
+      </li>
+    
+  </ul>
+
+
+      </div>
+    </div>
+
+    <div id="main" class="main">
+      <div class="main-inner">
+        <div id="content" class="content">
+          
+
+  <div id="posts" class="posts-expand">
+    
+
+  <div class="post post-type-normal ">
+    <div class="post-header">
+
+      
+      
+        <h1 class="post-title">
+          
+          
+            
+              vsftpd简单配置
+            
+          
+        </h1>
+      
+
+      <div class="post-meta">
+        <span class="post-time">
+          发表于 2015-05-11
+        </span>
+
+        
+          <span class="post-category">
+            &nbsp; | &nbsp; 分类于
+            
+              <a href="/categories/%E8%BF%90%E7%BB%B4/">运维</a>
+
+              
+              
+
+            
+          </span>
+        
+
+        
+          
+            <span class="post-comments-count">
+            &nbsp; | &nbsp;
+            <a href="/2015/05/12/vsftp-config/#comments" >
+              <span class="post-comments-count ds-thread-count" data-thread-key="2015/05/12/vsftp-config/"></span>
+            </a>
+          </span>
+          
+        
+      </div>
+    </div>
+
+    <div class="post-body">
+
+      
+      
+
+      
+        <p>前段时间由于工作上的需求，实践了一下vsftpd的配置，接触到了一些不常遇到的需求，在此将整个配置步骤记录一下。</p>
+<a id="more"></a>
+
+<h3 id="配置需求"><a href="#配置需求" class="headerlink" title="配置需求"></a>配置需求</h3><ol>
+<li>实现多个用户登录<br>整个ftp服务需要提供给多种不通角色的人使用，为了减少不必要的系统用户，我通过配置虚拟用户实现。本次配置主要涉及student和teacher两个角色。</li>
+<li>不同用户的主目录、访问权限不同<br>要求不同用户有不同的主目录，并且有不同的权限。这本次配置中，用户、主目录、权限的需求如下:   <table>
+ <tr>
+     <th>用户</th>
+     <th>主目录</th>
+     <th>权限</th>
+ </tr>
+ <tr>
+     <td>teacher</td>
+     <td>/home/ftp</td>
+     <td>查看、上传、下载</td>
+ </tr>
+ <tr>
+     <td>student</td>
+     <td>/home/ftp/project/</td>
+     <td>查看、上传</td>
+ </tr>
+ </table>    </li>
+<li>其中某个用户只允许上传不允许下载<br>由于ftp用于学生交作业的场景，因此student用户只允许上传，不允许下载。</li>
+</ol>
+<h3 id="环境及涉及的工具"><a href="#环境及涉及的工具" class="headerlink" title="环境及涉及的工具"></a>环境及涉及的工具</h3><ol>
+<li><a href="http://www.debian.org/intro/about" target="_blank" rel="noopener">debian 6.0</a><br> 通用的linux发行版</li>
+<li><a href="http://vsftpd.beasts.org/" target="_blank" rel="noopener">vsftpd2.3.2+</a><br> 号称非常安全的ftp服务端</li>
+<li><a href="http://man.devl.cz/deb/d/db4.8-util" target="_blank" rel="noopener">db4.8-util</a><br> 一个文件数据库工具包</li>
+</ol>
+<h3 id="主要配置步骤"><a href="#主要配置步骤" class="headerlink" title="主要配置步骤"></a>主要配置步骤</h3><ol>
+<li><p>安装相关软件 # aptitude install vsftpd db4.8-util</p>
+</li>
+<li><p>创建ftp用户、创建目录（至于为什么要多建一个upload目录，这个是由于新版本的vsftpd的一个限制导致的，在最后问题部分会解释）</p>
+<pre><code># mkdir /home/ftp
+# mkdir /home/ftp/upload
+# mkdir -p /home/ftp/project
+# mkdir -p /home/ftp/project/upload
+# useradd vsftpd -d /home/ftp -s /bin/false
+# chown -R vsftpd:vsftpd /home/ftp          </code></pre></li>
+<li><p>生成用户数据库</p>
+<ul>
+<li><p>创建用户列表userlist.txt, 将要添加的用户名密码依次写入其中，这本例中，里面内容为  </p>
+<pre><code>student
+studentpasswd
+teacher
+teacherpasswd  </code></pre></li>
+<li><p>生成用户数据库  </p>
+<pre><code># db4.8_load -T -t hash -f /home/userlist.txt /etc/vsftpd_login.db</code></pre><ul>
+<li><p>设置数据库权限</p>
+<h1 id="chmod-600-etc-vsftpd-login-db"><a href="#chmod-600-etc-vsftpd-login-db" class="headerlink" title="chmod 600 /etc/vsftpd_login.db"></a>chmod 600 /etc/vsftpd_login.db</h1></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>配置PAM文件<br> 编辑文件/etc/pam.d/vsftpd.vu（如果没有则新建）, 增加以下内容：</p>
+<pre><code>auth required pam_userdb.so db=/etc/vsftpd_login
+account required pam_userdb.so db=/etc/vsftpd_login</code></pre><ul>
+<li>这一步中，虽然db是指向我们之前生成的vsftpd_login.db文件，但这里写的时候 <strong>不需要.db后缀</strong></li>
+<li>这一步中主要是将上一步建立的用户数据库写到PAM的配置中，以便PAM用来进行权限检查</li>
+<li>在随后的vsftpd.conf的配置中，我们启用PAM来检查我们指定的用户数据库文件中的用户</li>
+</ul>
+</li>
+<li><p>配置vsftpd.conf<br> 编辑/etc/vsftpd.conf, 确保含有以下配置</p>
+<pre><code>listen=YES
+anonymous_enable=NO 
+dirmessage_enable=YES 
+xferlog_enable=YES 
+xferlog_file=/var/log/vsftpd.log 
+xferlog_std_format=YES 
+chroot_local_user=YES 
+user_config_dir=/etc/vsftpd_user_conf 
+pam_service_name=vsftpd.vu 
+local_enable=YES 
+secure_chroot_dir=/var/run/vsftpd/empty
+# 下面两行指定了我们虚拟用户映射成的系统用户
+guest_enable=YES 
+guest_username=vsftpd</code></pre><p> 配置选项的介绍请参考 <a href="http://os.51cto.com/art/201008/221842.htm" target="_blank" rel="noopener">这篇文章</a></p>
+</li>
+<li><p>创建和修改单个用户配置  </p>
+<ul>
+<li><p>指定用户配置目录。在<code>/etc/vsftpd.conf</code>中, 有这么一行</p>
+<pre><code>user_config_dir=/etc/vsftpd_user_conf </code></pre><p>  我们只需要把各个用户的配置文件放到该目录中即可。配置文件需要注意以下几点：  </p>
+<ol>
+<li>文件名要和用户名一致</li>
+<li>文件中的配置会覆盖/etc/vsftpd.conf的一些用户权限相关的配置</li>
+</ol>
+</li>
+<li><p>创建用户配置目录</p>
+<pre><code># mkdir -p /etc/vsftpd_user_conf</code></pre></li>
+<li><p>/etc/vsftpd_user_conf/student配置文件中的配置如下：</p>
+<pre><code># 允许上传
+write_enable=YES
+anon_world_readable_only=NO
+anon_upload_enable=YES
+anon_mkdir_write_enable=YES
+# 不允许删除、改名等其它权限
+anon_other_write_enable=NO
+# 不允许下载
+download_enable=NO
+# 主目录
+local_root=/home/ftp/project</code></pre></li>
+<li><p>/etc/vsftpd_user_conf/teacher配置文件中的配置如下：</p>
+<pre><code># 允许上传
+write_enable=YES
+anon_world_readable_only=NO
+anon_upload_enable=YES
+anon_mkdir_write_enable=YES
+# 不允许删除、改名等其它权限
+anon_other_write_enable=NO
+# 主目录
+local_root=/home/ftp</code></pre></li>
+</ul>
+</li>
+<li><p>重启服务</p>
+<pre><code># /etc/init.d/vsftpd restart  </code></pre></li>
+</ol>
+<h3 id="测试验证"><a href="#测试验证" class="headerlink" title="测试验证"></a>测试验证</h3><ol>
+<li><p>验证用户登录</p>
+<pre><code># student用户
+vincent@vincent-notebook:~/cloud/kvm-vms$ lftp student@192.168.122.193
+Password:
+lftp student@192.168.122.193:~&gt; ls
+-rw-r--r--    1 0        0               0 May 14 12:10 test_down
+drwxr-xr-x    2 0        0            4096 May 14 12:09 upload
+
+# teacher用户
+vincent@vincent-notebook:~/cloud/kvm-vms$ lftp teacher@192.168.122.193
+Password:
+lftp teacher@192.168.122.193:~&gt; ls
+dr-xr-xr-x    3 1001     1001         4096 May 14 12:10 project
+drwxr-xr-x    2 0        0            4096 May 14 12:10 upload
+lftp teacher@192.168.122.193:/&gt;</code></pre></li>
+<li><p>验证student帐号权限</p>
+<pre><code>lftp student@192.168.122.193:/upload&gt; put up_test
+lftp student@192.168.122.193:/upload&gt; ls
+-rw-------    1 1001     1001            0 May 14 12:15 up_test
+lftp student@192.168.122.193:/upload&gt; get up_test
+get: Access failed: 550 Permission denied. (up_test)
+lftp student@192.168.122.193:/upload&gt;</code></pre></li>
+<li><p>验证teacher帐号权限</p>
+<pre><code>lftp teacher@192.168.122.193:/upload&gt; put up_test
+lftp teacher@192.168.122.193:/upload&gt; ls
+-rw-r--r--    1 1001     1001            0 May 14 12:10 test_down
+-rw-------    1 1001     1001            0 May 14 12:16 up_test
+lftp teacher@192.168.122.193:/upload&gt; get test_down
+lftp teacher@192.168.122.193:/upload&gt;</code></pre></li>
+</ol>
+<h3 id="问题与注意事项"><a href="#问题与注意事项" class="headerlink" title="问题与注意事项"></a>问题与注意事项</h3><ol>
+<li><p>如何增加新用户？  </p>
+<ul>
+<li><p>建立要添加的new-userlist.txt， 格式如下：  </p>
+<pre><code>用户1
+密码1
+用户2
+密码2</code></pre></li>
+<li><p>执行以下命令:  </p>
+<pre><code># db4.8_load -T -n -t hash -f /home/userlist.txt /etc/vsftpd_login.db</code></pre></li>
+</ul>
+</li>
+<li><p>用lftp可以用mirror命令下载空文件，造成类似可以下载的错觉<br>如果服务端某个目录里面有个空文件，此时用lftp的mirror命令下载整个目录，也会在本地创建出类似的目录结构和空文件，会让人误以为可以进行下载，例如：</p>
+<pre><code>lftp student@192.168.122.193:/&gt; ls
+-rw-r--r--    1 1001     1001            0 May 14 12:10 test_down
+drwxr-xr-x    2 1001     1001         4096 May 14 12:15 upload
+lftp student@192.168.122.193:/&gt; mirror upload
+Total: 1 directory, 1 file, 0 symlinks
+New: 1 file, 0 symlinks
+lftp student@192.168.122.193:/&gt;</code></pre></li>
+<li><p>错误提示<code>Login failed: 530 Login incorrect.</code><br> 一般是用户名或密码错误。这里需要注意的情况是，尽管我们生成的数据库名字为vsftpd_login.db，但pam.d里面的vsftpd.vu中，里面指定的<code>db=/etc/vsftpd_login</code>不能写成<code>db=/etc/vsftpd_login.db</code></p>
+</li>
+<li><p>错误提示<code>Login failed: 500 OOPS: bad bool value in config file for: anon_upload_enable</code><br> 这个错误一般是配置文件中某一行末尾带有空格导致的</p>
+</li>
+<li><p>错误提示<code>Login failed: 500 OOPS: cannot locate user entry:teacher</code><br> 这个错误提示是/etc/vsftpd.conf中缺少以下两行：</p>
+<pre><code>guest_enable=YES 
+guest_username=vsftpd</code></pre></li>
+<li><p>错误提示<code>Login failed: 500 OOPS: vsftpd: refusing to run with writable root inside chroot()</code><br> 这个错误提示是因为，在新版的vsftpd中，为了防止某个漏洞，限制了对chroot根目录的写权限（即local_dir=配置的路径，不能具有写权限），因此我们上面采用了最无奈的办法，即先把根目录的写权限去掉，然后单独在根目录下再创建一个upload目录。</p>
+<pre><code># chmod -w /home/ftp &amp;&amp; mkdir -p /home/ftp/upload
+# chmod -w /home/ftp/project &amp;&amp; mkdir -p /home/ftp/project/upload
+# chown -R vsftpd:vsftpd /home/ftp</code></pre><p>据说在最新版的vsftpd3.0中，会增加<code>allow_writable_chroot=YES</code>这个配置开关。此外目前有达人已经弄出了支持该选项的vsftpd扩展，这里就不折腾了。</p>
+</li>
+</ol>
+<h3 id="参考文章"><a href="#参考文章" class="headerlink" title="参考文章"></a>参考文章</h3><ul>
+<li><a href="http://wiki.ubuntu.org.cn/Vsftpd" target="_blank" rel="noopener">Ubuntu vsftp配置文档</a></li>
+<li><a href="http://wiki.ubuntu.org.cn/Vsftpd%E8%99%9A%E6%8B%9F%E7%94%A8%E6%88%B7%E8%AE%BE%E7%BD%AE" target="_blank" rel="noopener">Vsftpd虚拟用户设置</a></li>
+<li><a href="http://wiki.ubuntu.org.cn/Vsftpd%E5%AE%9E%E4%BE%8B#.E8.B4.A6.E5.8F.B7" target="_blank" rel="noopener">Vsftpd实例</a></li>
+<li><a href="http://os.51cto.com/art/201008/222036.htm" target="_blank" rel="noopener">Vsftpd入门</a></li>
+<li><a href="http://blog.csdn.net/watson243671/article/details/5769636" target="_blank" rel="noopener">VsFTP配置</a></li>
+<li><a href="http://phpcj.org/vsftpd-refusing-to-run-with-writable-root-inside-chroot/" target="_blank" rel="noopener">改权限的办法解决chroot root不可写问题</a></li>
+<li><a href="http://www.benscobie.com/fixing-500-oops-vsftpd-refusing-to-run-with-writable-root-inside-chroot/" target="_blank" rel="noopener">解决chroot root不可写问题的一些办法（英文）</a></li>
+<li><a href="http://stackoverflow.com/questions/16102996/vsftpd-refusing-to-run-with-writable-root-inside-chroot" target="_blank" rel="noopener">扩展版本vsftpd解决chroot root不可写问题（英文）</a></li>
+</ul>
+
+      
+    </div>
+
+    <div class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/linux/"> #linux </a>
+          
+            <a href="/tags/vsftp/"> #vsftp </a>
+          
+            <a href="/tags/ftp/"> #ftp </a>
+          
+        </div>
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2015/05/12/mysql-replecation-config/">mysql-replecation</a>
+            
+          </div>
+
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2015/05/12/one-blog-one-answer/">一篇博客，一个答案</a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </div>
+  </div>
+
+
+
+    
+      <div class="comments" id="comments">
+        
+          <div class="ds-thread" data-thread-key="2015/05/12/vsftp-config/"
+               data-title="vsftpd简单配置" data-url="http://vincentor.github.io/2015/05/12/vsftp-config/">
+          </div>
+        
+      </div>
+    
+  </div>
+
+
+        </div>
+
+        
+      </div>
+
+
+      
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <div class="site-overview">
+        <div class="site-author motion-element">
+          <img class="site-author-image" src="http://cloud-4.steamusercontent.com/ugc/29599705911306135/2E33708EE2D861282F0859EE00CDABF659515F91/" alt="Vincent Ho" />
+          <p class="site-author-name">Vincent Ho</p>
+        </div>
+        <p class="site-description motion-element">Live with hope, live with me.</p>
+        <div class="site-state motion-element">
+          <div class="site-state-item site-state-posts">
+            <a href="/archives/">
+              <span class="site-state-item-count">9</span>
+              <span class="site-state-item-name">日志</span>
+            </a>
+          </div>
+
+          <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+              <span class="site-state-item-count">4</span>
+              <span class="site-state-item-name">分类</span>
+              </a>
+          </div>
+
+          <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+              <span class="site-state-item-count">10</span>
+              <span class="site-state-item-name">标签</span>
+              </a>
+          </div>
+
+        </div>
+
+        
+          <div class="feed-link motion-element">
+            <a href="/atom.xml">
+              <i class="menu-item-icon icon-feed"></i>
+              RSS
+            </a>
+          </div>
+        
+
+        <div class="links-of-author motion-element">
+          
+            
+              <span class="links-of-author-item">
+              <a href="https://github.com/vincentor" target="_blank">github</a>
+            </span>
+            
+              <span class="links-of-author-item">
+              <a href="http://weibo.com/hopeworld" target="_blank">weibo</a>
+            </span>
+            
+              <span class="links-of-author-item">
+              <a href="http://www.zhihu.com/people/xi-wang-40" target="_blank">zhihu</a>
+            </span>
+            
+          
+        </div>
+
+        
+        
+          <div class="cc-license motion-element">
+            <a href="http://creativecommons.org/licenses/by-nc-sa/4.0" class="cc-opacity" target="_blank">
+              <img src="/images/cc-by-nc-sa.svg" alt="Creative Commons" />
+            </a>
+          </div>
+        
+
+      </div>
+
+      
+        <div class="post-toc-wrap sidebar-panel-active">
+          <div class="post-toc-indicator-top post-toc-indicator"></div>
+          <div class="post-toc">
+            
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#配置需求"><span class="nav-number">1.</span> <span class="nav-text">配置需求</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#环境及涉及的工具"><span class="nav-number">2.</span> <span class="nav-text">环境及涉及的工具</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#主要配置步骤"><span class="nav-number">3.</span> <span class="nav-text">主要配置步骤</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#chmod-600-etc-vsftpd-login-db"><span class="nav-number"></span> <span class="nav-text">chmod 600 &#x2F;etc&#x2F;vsftpd_login.db</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#测试验证"><span class="nav-number">1.</span> <span class="nav-text">测试验证</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#问题与注意事项"><span class="nav-number">2.</span> <span class="nav-text">问题与注意事项</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#参考文章"><span class="nav-number">3.</span> <span class="nav-text">参考文章</span></a></li></ol></div>
+            
+          </div>
+          <div class="post-toc-indicator-bottom post-toc-indicator"></div>
+        </div>
+      
+
+    </div>
+  </div>
+
+
+    </div>
+
+    <div id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">
+  
+  &copy; &nbsp;  2015 - 
+  2020
+  <span class="with-love">
+    <i class="icon-heart"></i>
+  </span>
+  <span class="author">Vincent Ho</span>
+</div>
+
+<div class="powered-by">
+  由 <a class="theme-link" href="http://hexo.io" target="_blank" rel="noopener">Hexo</a> 强力驱动
+</div>
+
+<div class="theme-info">
+  主题 -
+  <a class="theme-link" href="https://github.com/iissnan/hexo-theme-next" target="_blank" rel="noopener">
+    NexT.Mist
+  </a>
+</div>
+
+
+
+      </div>
+    </div>
+
+    <div class="back-to-top"></div>
+  </div>
+
+  <script type="text/javascript" src="/vendors/jquery/index.js?v=2.1.3"></script>
+
+  
+  
+
+  
+  <script type="text/javascript" src="/vendors/fancybox/source/jquery.fancybox.pack.js"></script>
+  <script type="text/javascript">
+    $(document).ready(function() {
+      $('.content img').each(function () {
+        var $image = $(this);
+        var $imageWrapLink = $image.parent('a');
+
+        if ($imageWrapLink.size() < 1) {
+          $imageWrapLink = $image.wrap('<a href="' + this.getAttribute('src') + '"></a>').parent('a');
+        }
+        $imageWrapLink.addClass('fancybox');
+      });
+    });
+    $('.fancybox').fancybox({
+      helpers: {
+        overlay: {
+          locked: false
+        }
+      }
+    });
+  </script>
+
+
+  <script type="text/javascript">
+  function hasMobileUA () {
+    var nav = window.navigator;
+    var ua = nav.userAgent;
+    var pa = /iPad|iPhone|Android|Opera Mini|BlackBerry|webOS|UCWEB|Blazer|PSP|IEMobile|Symbian/g;
+
+    return pa.test(ua);
+  }
+
+  function isDesktop () {
+    return screen.width > 991 && !hasMobileUA();
+  }
+
+  function isTablet () {
+    return screen.width < 992 && screen.width > 767 && hasMobileUA();
+  }
+
+  function isMobile () {
+    return screen.width < 767 && hasMobileUA();
+  }
+
+  function escapeSelector (selector) {
+    return selector.replace(/[!"$%&'()*+,.\/:;<=>?@[\\\]^`{|}~]/g, "\\$&")
+  }
+</script>
+
+  
+
+  <script type="text/javascript" src="/vendors/velocity/velocity.min.js"></script>
+  <script type="text/javascript" src="/vendors/velocity/velocity.ui.min.js"></script>
+
+  <script type="text/javascript" id="motion.global">
+  $(document).ready(function () {
+    var body = $('body');
+    var isSidebarVisible = false;
+    var sidebarToggle = $('.sidebar-toggle');
+    var sidebarToggleLine1st = $('.sidebar-toggle-line-first')
+    var sidebarToggleLine2nd = $('.sidebar-toggle-line-middle');
+    var sidebarToggleLine3rd = $('.sidebar-toggle-line-last');
+    var sidebar = $('.sidebar');
+
+    var SIDEBAR_WIDTH = '320px';
+    var SIDEBAR_DISPLAY_DURATION = 300;
+
+    var sidebarToogleLineStatusInit = {width: '100%', opacity: 1, left: 0, rotateZ: 0, top: 0};
+
+    var sidebarToggleLine1stStatusInit = sidebarToogleLineStatusInit;
+    var sidebarToggleLine1stStatusArrow = {width: '50%', rotateZ: '-45deg', top: '2px'};
+    var sidebarToogleLine1stStatusClose = {width: '100%', rotateZ: '-45deg', top: '5px'};
+
+    var sidebarToggleLine2ndStatusInit = sidebarToogleLineStatusInit;
+    var sidebarToggleLine2ndStatusArrow = {width: '90%'};
+    var sidebarToogleLine2ndStatusClose = {opacity: 0};
+
+    var sidebarToggleLine3rdStatusInit = sidebarToogleLineStatusInit;
+    var sidebarToggleLine3rdStatusArrow = {width: '50%', rotateZ: '45deg', top: '-2px'};
+    var sidebarToogleLine3rdStatusClose = {width: '100%', rotateZ: '45deg', top: '-5px'};
+
+    LogoAndMenuMotion();
+    sidebatToggleMotion();
+    postsListMotion();
+    backToTopMotion();
+
+
+    $(document)
+      .on('sidebar.isShowing', function () {
+        isDesktop() && body.velocity(
+          {paddingRight: SIDEBAR_WIDTH},
+          SIDEBAR_DISPLAY_DURATION
+        );
+        sidebarContentMotion();
+      })
+      .on('sidebar.isHiding', function () {});
+
+    function LogoAndMenuMotion() {
+      $.Velocity.RunSequence([
+        { e: $('.brand'), p: { opacity: 1 }, o: { duration: 100 } },
+        { e: $('.logo'), p: { opacity: 1, top: 0 }, o: { duration: 50} },
+        
+        { e: $('.logo-line-before i'), p: { translateX: "100%" }, o: { duration: 500, sequenceQueue: false } },
+        { e: $('.logo-line-after i'), p: { translateX: "-100%" }, o: { duration: 500, sequenceQueue: false } },
+        
+        { e: $('.site-title'), p: { opacity: 1, top: 0 }, o: { duration: 200 } }
+      ]);
+      $('.menu-item').velocity('transition.slideDownIn', {display: null});
+    }
+
+
+    function backToTopMotion () {
+      var b2top = $('.back-to-top');
+      b2top.on('click', function () {
+        body.velocity('scroll');
+      });
+    }
+
+    function sidebarShowMotion () {
+
+      sidebarToggleLine1st.velocity(sidebarToogleLine1stStatusClose);
+      sidebarToggleLine2nd.velocity(sidebarToogleLine2ndStatusClose);
+      sidebarToggleLine3rd.velocity(sidebarToogleLine3rdStatusClose);
+
+      sidebar.velocity({width: SIDEBAR_WIDTH}, {
+        display: 'block',
+        duration: SIDEBAR_DISPLAY_DURATION,
+        complete: function () {
+          sidebar.addClass('sidebar-active');
+          sidebar.trigger('sidebar.didShow');
+        }
+      });
+      sidebar.trigger('sidebar.isShowing');
+    }
+
+    function sidebarHideMotion () {
+      isDesktop() && body.velocity({paddingRight: 0});
+      sidebar.velocity('reverse');
+
+      sidebarToggleLine1st.velocity(sidebarToggleLine1stStatusInit);
+      sidebarToggleLine2nd.velocity(sidebarToggleLine2ndStatusInit);
+      sidebarToggleLine3rd.velocity(sidebarToggleLine3rdStatusInit);
+
+      sidebar.removeClass('sidebar-active');
+      sidebar.trigger('sidebar.isHiding');
+    };
+
+    function sidebarContentMotion () {
+      $('.sidebar .motion-element').velocity(
+        'transition.slideRightIn',
+        {stagger: 50, drag: true}
+      );
+    }
+
+    function postsListMotion () {
+      var postMotionOptions = window.postMotionOptions || {stagger: 300, drag: true};
+      $('.post').velocity('transition.slideDownIn', postMotionOptions);
+    }
+
+    function sidebatToggleMotion () {
+      sidebarToggle.on('click', function () {
+        isSidebarVisible ? sidebarHideMotion() : sidebarShowMotion();
+        isSidebarVisible = !isSidebarVisible;
+      });
+
+      sidebarToggle.hover(function () {
+        if (isSidebarVisible) {return}
+        sidebarToggleLine1st.velocity('stop').velocity(sidebarToggleLine1stStatusArrow);
+        sidebarToggleLine2nd.velocity('stop').velocity(sidebarToggleLine2ndStatusArrow);
+        sidebarToggleLine3rd.velocity('stop').velocity(sidebarToggleLine3rdStatusArrow);
+      }, function () {
+        if (isSidebarVisible) {return}
+        sidebarToggleLine1st.velocity('stop').velocity(sidebarToggleLine1stStatusInit);
+        sidebarToggleLine2nd.velocity('stop').velocity(sidebarToggleLine2ndStatusInit);
+        sidebarToggleLine3rd.velocity('stop').velocity(sidebarToggleLine3rdStatusInit);
+      });
+    }
+  });
+
+</script>
+
+
+
+
+
+  
+  
+<script type="text/javascript" id="bootstrap.scrollspy.custom">
+  /* ========================================================================
+  * Bootstrap: scrollspy.js v3.3.2
+  * http://getbootstrap.com/javascript/#scrollspy
+  * ========================================================================
+  * Copyright 2011-2015 Twitter, Inc.
+  * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+  * ======================================================================== */
+
+  /**
+   * Custom by iissnan
+   *
+   * - Add a `clear.bs.scrollspy` event.
+   * - Esacpe targets selector.
+   */
+
+
+  +function ($) {
+    'use strict';
+
+    // SCROLLSPY CLASS DEFINITION
+    // ==========================
+
+    function ScrollSpy(element, options) {
+      this.$body          = $(document.body)
+      this.$scrollElement = $(element).is(document.body) ? $(window) : $(element)
+      this.options        = $.extend({}, ScrollSpy.DEFAULTS, options)
+      this.selector       = (this.options.target || '') + ' .nav li > a'
+      this.offsets        = []
+      this.targets        = []
+      this.activeTarget   = null
+      this.scrollHeight   = 0
+
+      this.$scrollElement.on('scroll.bs.scrollspy', $.proxy(this.process, this))
+      this.refresh()
+      this.process()
+    }
+
+    ScrollSpy.VERSION  = '3.3.2'
+
+    ScrollSpy.DEFAULTS = {
+      offset: 10
+    }
+
+    ScrollSpy.prototype.getScrollHeight = function () {
+      return this.$scrollElement[0].scrollHeight || Math.max(this.$body[0].scrollHeight, document.documentElement.scrollHeight)
+    }
+
+    ScrollSpy.prototype.refresh = function () {
+      var that          = this
+      var offsetMethod  = 'offset'
+      var offsetBase    = 0
+
+      this.offsets      = []
+      this.targets      = []
+      this.scrollHeight = this.getScrollHeight()
+
+      if (!$.isWindow(this.$scrollElement[0])) {
+        offsetMethod = 'position'
+        offsetBase   = this.$scrollElement.scrollTop()
+      }
+
+      this.$body
+        .find(this.selector)
+        .map(function () {
+          var $el   = $(this)
+          var href  = $el.data('target') || $el.attr('href')
+          var $href = /^#./.test(href) && $(escapeSelector(href)) // Need to escape selector.
+
+          return ($href
+            && $href.length
+            && $href.is(':visible')
+            && [[$href[offsetMethod]().top + offsetBase, href]]) || null
+        })
+        .sort(function (a, b) { return a[0] - b[0] })
+        .each(function () {
+          that.offsets.push(this[0])
+          that.targets.push(this[1])
+        })
+
+
+    }
+
+    ScrollSpy.prototype.process = function () {
+      var scrollTop    = this.$scrollElement.scrollTop() + this.options.offset
+      var scrollHeight = this.getScrollHeight()
+      var maxScroll    = this.options.offset + scrollHeight - this.$scrollElement.height()
+      var offsets      = this.offsets
+      var targets      = this.targets
+      var activeTarget = this.activeTarget
+      var i
+
+      if (this.scrollHeight != scrollHeight) {
+        this.refresh()
+      }
+
+      if (scrollTop >= maxScroll) {
+        return activeTarget != (i = targets[targets.length - 1]) && this.activate(i)
+      }
+
+      if (activeTarget && scrollTop < offsets[0]) {
+        $(this.selector).trigger('clear.bs.scrollspy')  // Add a custom event.
+        this.activeTarget = null
+        return this.clear()
+      }
+
+      for (i = offsets.length; i--;) {
+        activeTarget != targets[i]
+          && scrollTop >= offsets[i]
+          && (!offsets[i + 1] || scrollTop <= offsets[i + 1])
+          && this.activate(targets[i])
+      }
+    }
+
+    ScrollSpy.prototype.activate = function (target) {
+      this.activeTarget = target
+
+      this.clear()
+
+      var selector = this.selector +
+        '[data-target="' + target + '"],' +
+        this.selector + '[href="' + target + '"]'
+
+      var active = $(selector)
+        .parents('li')
+        .addClass('active')
+
+      if (active.parent('.dropdown-menu').length) {
+        active = active
+          .closest('li.dropdown')
+          .addClass('active')
+      }
+
+      active.trigger('activate.bs.scrollspy')
+    }
+
+    ScrollSpy.prototype.clear = function () {
+      $(this.selector)
+        .parentsUntil(this.options.target, '.active')
+        .removeClass('active')
+    }
+
+
+    // SCROLLSPY PLUGIN DEFINITION
+    // ===========================
+
+    function Plugin(option) {
+      return this.each(function () {
+        var $this   = $(this)
+        var data    = $this.data('bs.scrollspy')
+        var options = typeof option == 'object' && option
+
+        if (!data) $this.data('bs.scrollspy', (data = new ScrollSpy(this, options)))
+        if (typeof option == 'string') data[option]()
+      })
+    }
+
+    var old = $.fn.scrollspy
+
+    $.fn.scrollspy             = Plugin
+    $.fn.scrollspy.Constructor = ScrollSpy
+
+
+    // SCROLLSPY NO CONFLICT
+    // =====================
+
+    $.fn.scrollspy.noConflict = function () {
+      $.fn.scrollspy = old
+      return this
+    }
+
+
+    // SCROLLSPY DATA-API
+    // ==================
+
+    $(window).on('load.bs.scrollspy.data-api', function () {
+      $('[data-spy="scroll"]').each(function () {
+        var $spy = $(this)
+        Plugin.call($spy, $spy.data())
+      })
+    })
+
+  }(jQuery);
+</script>
+
+
+<script type="text/javascript" id="sidebar.toc.highlight">
+  $(document).ready(function () {
+    var tocSelector = '.post-toc';
+    var $tocSelector = $(tocSelector);
+    var activeCurrentSelector = '.active-current';
+
+    $tocSelector
+      .on('activate.bs.scrollspy', function () {
+        var $currentActiveElement = $(tocSelector + ' .active').last();
+
+        removeCurrentActiveClass();
+        $currentActiveElement.addClass('active-current');
+
+        $tocSelector[0].scrollTop = $currentActiveElement.position().top;
+      })
+      .on('clear.bs.scrollspy', function () {
+        removeCurrentActiveClass();
+      });
+
+    function removeCurrentActiveClass () {
+      $(tocSelector + ' ' + activeCurrentSelector)
+        .removeClass(activeCurrentSelector.substring(1));
+    }
+
+    function processTOC () {
+      getTOCMaxHeight();
+      toggleTOCOverflowIndicators();
+    }
+
+    function getTOCMaxHeight () {
+      var $sidebarInner = $('.sidebar-inner');
+      var height = $('.sidebar').height() -
+                   $tocSelector.position().top -
+                   $('.post-toc-indicator-bottom').height();
+
+      $tocSelector.css('height', height);
+
+      return height;
+    }
+
+    function toggleTOCOverflowIndicators () {
+      tocOverflowIndicator(
+        '.post-toc-indicator-top',
+        $tocSelector.scrollTop() > 0 ? 'show' : 'hide'
+      );
+
+      tocOverflowIndicator(
+        '.post-toc-indicator-bottom',
+        $tocSelector.scrollTop() >= $tocSelector.find('ol').height() - $tocSelector.height() ? 'hide' : 'show'
+      )
+    }
+
+    $(document).on('sidebar.didShow', function () {
+      processTOC();
+    });
+
+    $('body').scrollspy({ target: tocSelector });
+    $(window).on('resize', function () {
+      if ( $('.sidebar').hasClass('sidebar-active') ) {
+        processTOC();
+      }
+    });
+
+    onScroll($tocSelector);
+
+    function onScroll (element) {
+      element.on('mousewheel DOMMouseScroll', function (event) {
+          var oe = event.originalEvent;
+          var delta = oe.wheelDelta || -oe.detail;
+          var self = this;
+
+          this.scrollTop += ( delta < 0 ? 1 : -1 ) * 30;
+          event.preventDefault();
+
+          toggleTOCOverflowIndicators();
+      });
+    }
+
+    function tocOverflowIndicator (indicator, action) {
+      $(indicator).velocity('stop').velocity({
+        opacity: action === 'show' ? 0.4 : 0
+      }, { duration: 100 });
+    }
+
+  });
+</script>
+
+
+  <script type="text/javascript" id="sidebar.nav">
+    $(document).ready(function () {
+      var html = $('html');
+
+      $('.sidebar-nav li').on('click', function () {
+        var item = $(this);
+        var activeTabClassName = 'sidebar-nav-active';
+        var activePanelClassName = 'sidebar-panel-active';
+        if (item.hasClass(activeTabClassName)) {
+          return;
+        }
+
+        var currentTarget = $('.' + activePanelClassName);
+        var target = $('.' + item.data('target'));
+
+        currentTarget.velocity('transition.slideUpOut', 200, function () {
+          target
+            .velocity('stop')
+            .velocity('transition.slideDownIn', 200)
+            .addClass(activePanelClassName);
+        });
+
+        item.siblings().removeClass(activeTabClassName);
+        item.addClass(activeTabClassName);
+      });
+
+      $('.post-toc a').on('click', function (e) {
+        e.preventDefault();
+        var offset = $(escapeSelector(this.getAttribute('href'))).offset().top;
+        html.velocity('stop').velocity('scroll', {
+          offset: offset  + 'px',
+          mobileHA: false
+        });
+      });
+
+      // Expand sidebar on post detail page by default, when post has a toc.
+      var $tocContent = $('.post-toc-content');
+      if ($tocContent.length > 0 && $tocContent.html().trim().length > 0 && isDesktop()) {
+        setTimeout(function () {
+          $('.sidebar-toggle').trigger('click');
+        }, 800);
+      }
+    });
+  </script>
+
+
+
+
+  
+
+  
+  
+
+  
+    
+  
+
+  <script type="text/javascript">
+    var duoshuoQuery = {short_name:"hopeworld"};
+    (function() {
+      var ds = document.createElement('script');
+      ds.type = 'text/javascript';ds.async = true;
+      ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+      ds.charset = 'UTF-8';
+      (document.getElementsByTagName('head')[0]
+      || document.getElementsByTagName('body')[0]).appendChild(ds);
+    })();
+  </script>
+
+  
+
+
+  
+  
+</body>
+</html>
